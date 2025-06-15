@@ -1,0 +1,100 @@
+# Ollama Proxy systemd service file
+# Copy this file to /etc/systemd/system/ollama-proxy.service
+# 
+# Installation:
+# sudo cp docs/ollama-proxy.service /etc/systemd/system/
+# sudo systemctl daemon-reload
+# sudo systemctl enable ollama-proxy
+# sudo systemctl start ollama-proxy
+
+[Unit]
+Description=Ollama Proxy Server - Intelligent routing for multiple Ollama instances
+Documentation=https://github.com/your-org/ollama-proxy
+After=network.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=ollama
+Group=ollama
+WorkingDirectory=/opt/ollama-proxy
+
+# Main command
+ExecStart=/usr/local/bin/bundle exec rails server -e production -p 11434
+
+# Pre-start checks
+ExecStartPre=/bin/bash -c 'test -f /opt/ollama-proxy/config/master.key || (echo "Missing master.key" && exit 1)'
+ExecStartPre=/bin/bash -c 'test -d /var/log/ollama-proxy || mkdir -p /var/log/ollama-proxy'
+ExecStartPre=/bin/bash -c 'chown ollama:ollama /var/log/ollama-proxy'
+
+# Graceful shutdown
+ExecStop=/bin/kill -SIGTERM $MAINPID
+TimeoutStopSec=30
+KillMode=mixed
+
+# Restart policy
+Restart=always
+RestartSec=10
+StartLimitInterval=300
+StartLimitBurst=5
+
+# Environment variables
+Environment=RAILS_ENV=production
+Environment=RAILS_LOG_TO_STDOUT=false
+Environment=BUNDLE_PATH=/opt/ollama-proxy/vendor/bundle
+Environment=RAILS_SERVE_STATIC_FILES=true
+
+# Optional: Set specific Ruby and bundle paths
+# Environment=PATH=/usr/local/bin:/usr/bin:/bin
+# Environment=GEM_HOME=/opt/ollama-proxy/vendor/bundle/ruby/3.4.0
+
+# Security settings
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/opt/ollama-proxy /var/log/ollama-proxy /tmp
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+RestrictRealtime=true
+RestrictNamespaces=true
+LockPersonality=true
+MemoryDenyWriteExecute=false
+RemoveIPC=true
+
+# Resource limits
+LimitNOFILE=65536
+LimitNPROC=32768
+
+# Network security
+PrivateDevices=true
+ProtectHostname=true
+ProtectKernelLogs=true
+ProtectProc=invisible
+ProcSubset=pid
+
+[Install]
+WantedBy=multi-user.target
+
+# Usage Examples:
+#
+# Check status:
+# sudo systemctl status ollama-proxy
+#
+# View logs:
+# sudo journalctl -u ollama-proxy -f
+#
+# Restart service:
+# sudo systemctl restart ollama-proxy
+#
+# Stop service:
+# sudo systemctl stop ollama-proxy
+#
+# View detailed logs:
+# tail -f /var/log/ollama-proxy/application.log
+#
+# Configuration:
+# Edit /opt/ollama-proxy/config/ollama_proxy.yml
+# Then: sudo systemctl restart ollama-proxy
