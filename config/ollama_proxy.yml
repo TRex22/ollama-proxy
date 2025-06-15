@@ -1,0 +1,134 @@
+default: &default
+  proxy_port: 11434
+  
+  # Server configuration with priority and memory limits
+  servers:
+    high_performance:
+      host: "localhost"
+      port: 11435
+      name: "high_performance"
+      priority: 1  # Higher priority = preferred server
+      max_memory_gb: null  # null = unlimited
+      enabled: true
+    legacy:
+      host: "localhost"
+      port: 11436
+      name: "legacy"
+      priority: 2  # Lower priority = fallback server
+      max_memory_gb: 8  # Only accept models up to 8GB
+      enabled: true
+    # Example of additional server configuration
+    # remote_gpu:
+    #   host: "192.168.1.100"
+    #   port: 11437
+    #   name: "remote_gpu"
+    #   priority: 3
+    #   max_memory_gb: 16
+    #   enabled: false
+  
+  # External third-party hosts for specific models
+  external_hosts:
+    openai:
+      host: "api.openai.com"
+      port: 443
+      protocol: "https"
+      api_key_env: "OPENAI_API_KEY"
+      name: "openai"
+      enabled: false
+    anthropic:
+      host: "api.anthropic.com"
+      port: 443
+      protocol: "https"
+      api_key_env: "ANTHROPIC_API_KEY"
+      name: "anthropic"
+      enabled: false
+  
+  # Model configuration
+  model_config:
+    # Explicit server assignments (overrides automatic routing)
+    explicit_assignments:
+      "gpt-4": "openai"
+      "gpt-3.5-turbo": "openai"
+      "claude-3-sonnet": "anthropic"
+      "claude-3-haiku": "anthropic"
+    
+    # Memory requirement overrides (in GB) - only used when Ollama API doesn't provide size info
+    # The proxy will first try to get actual model sizes from /api/tags on each server
+    memory_overrides:
+      # Use this section for models where Ollama doesn't report accurate sizes
+      # or for custom models not listed in standard Ollama repository
+      "custom-model-70b": 40.0
+      "experimental-model": 12.0
+    
+    # Pattern-based memory estimation for unknown models (last resort fallback)
+    memory_patterns:
+      - pattern: ".*-7b.*"
+        memory_gb: 4.5
+      - pattern: ".*-13b.*"
+        memory_gb: 8.0
+      - pattern: ".*-34b.*"
+        memory_gb: 20.0
+      - pattern: ".*-70b.*"
+        memory_gb: 40.0
+      - pattern: ".*-8x7b.*"
+        memory_gb: 45.0
+    
+    # Default memory for completely unknown models (absolute fallback)
+    default_memory_gb: 4.5
+    
+    # Cache model info to avoid repeated API calls
+    cache_model_info: true
+    cache_ttl_seconds: 3600  # Refresh model info every hour
+  
+  # Server selection strategy
+  routing_strategy: "priority_with_memory"  # Options: "priority_with_memory", "least_loaded", "round_robin"
+  
+  # Health check and timeout settings
+  request_timeout: 300
+  health_check_interval: 30
+  server_busy_threshold_ms: 1000  # Consider server busy if response time > 1s
+  model_info_timeout: 10  # Timeout for fetching model info from servers
+  
+  # Logging configuration
+  logging:
+    enabled: true
+    level: "info"
+    directory: "/var/log/ollama-proxy"
+    max_size: "100MB"
+    max_files: 10
+
+development:
+  <<: *default
+  # Override for development
+  logging:
+    enabled: true
+    level: "debug"
+    directory: "./log"
+    max_size: "10MB"
+    max_files: 3
+
+test:
+  <<: *default
+  # Override for testing
+  logging:
+    enabled: false
+  model_config:
+    cache_model_info: false  # Disable caching in tests
+  servers:
+    high_performance:
+      host: "localhost"
+      port: 11435
+      name: "high_performance"
+      priority: 1
+      max_memory_gb: null
+      enabled: true
+    legacy:
+      host: "localhost"
+      port: 11436
+      name: "legacy"
+      priority: 2
+      max_memory_gb: 8
+      enabled: true
+
+production:
+  <<: *default
