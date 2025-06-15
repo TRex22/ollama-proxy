@@ -9,7 +9,8 @@
       "Bash(rails:*)",
       "Bash(RAILS_ENV=test rails db:migrate)",
       "Bash(rspec:*)",
-      "Bash(mkdir:*)"
+      "Bash(mkdir:*)",
+      "Bash(bundle exec rspec:*)"
     ],
     "deny": []
   }

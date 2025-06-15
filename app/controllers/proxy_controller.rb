@@ -250,7 +250,7 @@ class ProxyController < ApplicationController
     response_headers = response.headers.to_h.except("transfer-encoding", "connection")
 
     response_headers.each do |key, value|
-      response.set_header(key, value) unless [ "transfer-encoding", "connection" ].include?(key.downcase)
+      self.response.set_header(key, value) unless [ "transfer-encoding", "connection" ].include?(key.downcase)
     end
 
     render body: response.body, status: response.code, content_type: response.headers["content-type"]
