@@ -1,8 +1,84 @@
-# Omakase Ruby styling for Rails
+# Ollama Proxy RuboCop Configuration
 inherit_gem: { rubocop-rails-omakase: rubocop.yml }
 
-# Overwrite or add rules to create your own house style
-#
-# # Use `[a, [b, c]]` not `[ a, [ b, c ] ]`
-# Layout/SpaceInsideArrayLiteralBrackets:
-#   Enabled: false
+AllCops:
+  TargetRubyVersion: 3.4
+  NewCops: enable
+  Exclude:
+    - 'bin/**/*'
+    - 'db/schema.rb'
+    - 'db/migrate/*'
+    - 'vendor/**/*'
+    - 'node_modules/**/*'
+    - 'tmp/**/*'
+    - 'log/**/*'
+    - 'storage/**/*'
+
+# Ollama Proxy specific overrides
+
+# Allow longer lines for configuration and logging
+Layout/LineLength:
+  Max: 120
+  IgnoredPatterns: ['(\A|\s)#']
+
+# Allow longer methods for complex proxy logic
+Metrics/MethodLength:
+  Max: 30
+  Exclude:
+    - 'app/controllers/proxy_controller.rb'
+
+# Allow longer classes for controllers with multiple concerns
+Metrics/ClassLength:
+  Max: 150
+  Exclude:
+    - 'app/controllers/proxy_controller.rb'
+
+# Allow more complex methods for server selection logic
+Metrics/CyclomaticComplexity:
+  Max: 12
+  Exclude:
+    - 'app/controllers/proxy_controller.rb'
+
+Metrics/PerceivedComplexity:
+  Max: 12
+  Exclude:
+    - 'app/controllers/proxy_controller.rb'
+
+# Allow more parameters for configuration methods
+Metrics/ParameterLists:
+  Max: 6
+
+# Rails-specific configurations
+Rails/Output:
+  Exclude:
+    - 'lib/tasks/**/*'
+
+# Allow console output in rake tasks
+Rails/OutputSafety:
+  Exclude:
+    - 'lib/tasks/**/*'
+
+# Style preferences for proxy server
+Style/Documentation:
+  Enabled: false
+
+# Allow both single and double quotes
+Style/StringLiterals:
+  Enabled: false
+
+# Allow trailing commas in multiline structures
+Style/TrailingCommaInArrayLiteral:
+  EnforcedStyleForMultiline: comma
+
+Style/TrailingCommaInHashLiteral:
+  EnforcedStyleForMultiline: comma
+
+# Spec-specific rules
+RSpec/MultipleExpectations:
+  Max: 5
+
+RSpec/ExampleLength:
+  Max: 15
+
+RSpec/NestedGroups:
+  Max: 4

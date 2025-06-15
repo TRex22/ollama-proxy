@@ -6,7 +6,9 @@
       "Bash(source:*)",
       "Bash(rvm use:*)",
       "Bash(ruby --version)",
-      "Bash(rails:*)"
+      "Bash(rails:*)",
+      "Bash(RAILS_ENV=test rails db:migrate)",
+      "Bash(rspec:*)"
     ],
     "deny": []
   }

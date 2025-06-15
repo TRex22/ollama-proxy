@@ -18,8 +18,10 @@ class User < ApplicationRecord
   def self.find_by_token(token)
     return nil if token.blank?
 
-    # Use constant-time comparison to prevent timing attacks
-    active.find { |user| ActiveSupport::SecurityUtils.secure_compare(user.token_digest, digest_token(token)) }
+    # Find users with token digests and verify with BCrypt
+    active.where.not(token_digest: nil).find { |user| 
+      BCrypt::Password.new(user.token_digest) == token
+    }
   end
 
   private

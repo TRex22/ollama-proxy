@@ -16,6 +16,10 @@ A production-ready Ruby on Rails 8.0.2 proxy server for managing multiple Ollama
 - **SQLite Database**: Lightweight database for user management and request logging
 - **Configurable Memory Limits**: Set maximum memory limits per server with automatic model routing
 
+## Quick Start - Production Setup
+
+For a complete Linux server setup with auto-starting services, see the [Production Quick Start](#production-quick-start---linux-server) section below.
+
 ## Prerequisites
 
 - Ruby 3.4.4
@@ -240,6 +244,269 @@ sudo systemctl enable ollama-proxy
 sudo systemctl start ollama-proxy
 sudo systemctl status ollama-proxy
 ```
+
+## Production Quick Start - Linux Server
+
+Complete setup guide for a production Linux server with auto-starting Ollama servers and proxy.
+
+### Prerequisites Installation
+
+```bash
+# Update system
+sudo apt update && sudo apt upgrade -y
+
+# Install required packages
+sudo apt install -y curl git build-essential sqlite3 libsqlite3-dev
+
+# Install Ruby 3.4.4 (using rbenv)
+curl -fsSL https://github.com/rbenv/rbenv-installer/raw/HEAD/bin/rbenv-installer | bash
+echo 'export PATH="$HOME/.rbenv/bin:$PATH"' >> ~/.bashrc
+echo 'eval "$(rbenv init -)"' >> ~/.bashrc
+source ~/.bashrc
+rbenv install 3.4.4
+rbenv global 3.4.4
+
+# Install Bundler
+gem install bundler
+
+# Install Ollama
+curl -fsSL https://ollama.ai/install.sh | sh
+```
+
+### 1. Create ollama user and setup directories
+
+```bash
+# Create ollama user if it doesn't exist
+sudo useradd -r -s /bin/bash -m -d /home/ollama ollama
+
+# Create necessary directories
+sudo mkdir -p /opt/ollama-proxy
+sudo mkdir -p /var/log/ollama-proxy
+sudo chown -R ollama:ollama /var/log/ollama-proxy
+sudo chmod 755 /var/log/ollama-proxy
+```
+
+### 2. Setup Ollama servers
+
+```bash
+# Create systemd service for high-performance Ollama server
+sudo tee /etc/systemd/system/ollama-high-performance.service > /dev/null <<'EOF'
+[Unit]
+Description=Ollama High Performance Server
+After=network.target
+
+[Service]
+Type=simple
+User=ollama
+Group=ollama
+Environment="OLLAMA_HOST=0.0.0.0:11435"
+Environment="CUDA_VISIBLE_DEVICES=0,1"
+ExecStart=/usr/local/bin/ollama serve
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+# Create systemd service for legacy Ollama server  
+sudo tee /etc/systemd/system/ollama-legacy.service > /dev/null <<'EOF'
+[Unit]
+Description=Ollama Legacy Server
+After=network.target
+
+[Service]
+Type=simple
+User=ollama
+Group=ollama
+Environment="OLLAMA_HOST=0.0.0.0:11436"
+Environment="CUDA_VISIBLE_DEVICES=2,3"
+ExecStart=/usr/local/bin/ollama serve
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target
+EOF
+```
+
+### 3. Deploy the proxy application
+
+```bash
+# Clone and setup the application
+cd /tmp
+git clone <your-repo-url> ollama-proxy
+sudo cp -r ollama-proxy /opt/
+sudo chown -R ollama:ollama /opt/ollama-proxy
+
+# Switch to ollama user for setup
+sudo -u ollama -H bash << 'EOSCRIPT'
+cd /opt/ollama-proxy
+
+# Install Ruby dependencies
+bundle install --deployment --without development test
+
+# Setup database
+RAILS_ENV=production bundle exec rails db:create db:migrate
+
+# Generate new Rails secret key
+RAILS_ENV=production bundle exec rails credentials:edit
+
+# Create initial admin user
+RAILS_ENV=production bundle exec rails users:create[admin]
+EOSCRIPT
+```
+
+### 4. Configure the proxy
+
+```bash
+# Edit configuration for your setup
+sudo -u ollama nano /opt/ollama-proxy/config/ollama_proxy.yml
+
+# Example configuration for the setup above:
+cat > /tmp/ollama_proxy_production.yml << 'EOF'
+production:
+  proxy_port: 11434
+  servers:
+    high_performance:
+      host: "localhost"
+      port: 11435
+      name: "high_performance"
+      priority: 1
+      max_memory_gb: null
+      enabled: true
+    legacy:
+      host: "localhost"
+      port: 11436
+      name: "legacy"
+      priority: 2
+      max_memory_gb: 8
+      enabled: true
+  model_config:
+    memory_patterns:
+      - pattern: ".*-7b.*"
+        memory_gb: 4.5
+      - pattern: ".*-13b.*"
+        memory_gb: 8.0
+      - pattern: ".*-70b.*"
+        memory_gb: 40.0
+    default_memory_gb: 4.5
+    cache_model_info: true
+    cache_ttl_seconds: 3600
+  request_timeout: 300
+  logging:
+    enabled: true
+    level: "info"
+    directory: "/var/log/ollama-proxy"
+    max_size: "100MB"
+    max_files: 10
+EOF
+
+sudo cp /tmp/ollama_proxy_production.yml /opt/ollama-proxy/config/ollama_proxy.yml
+sudo chown ollama:ollama /opt/ollama-proxy/config/ollama_proxy.yml
+```
+
+### 5. Install and start all services
+
+```bash
+# Install Ollama proxy service
+sudo cp /opt/ollama-proxy/docs/ollama-proxy.service /etc/systemd/system/
+
+# Reload systemd and enable all services
+sudo systemctl daemon-reload
+
+# Enable and start Ollama servers
+sudo systemctl enable ollama-high-performance
+sudo systemctl enable ollama-legacy
+sudo systemctl start ollama-high-performance
+sudo systemctl start ollama-legacy
+
+# Enable and start proxy
+sudo systemctl enable ollama-proxy
+sudo systemctl start ollama-proxy
+
+# Check status
+sudo systemctl status ollama-high-performance
+sudo systemctl status ollama-legacy
+sudo systemctl status ollama-proxy
+```
+
+### 6. Verify installation
+
+```bash
+# Check proxy health
+curl http://localhost:11434/health | jq
+
+# Pull some models (this may take a while)
+sudo -u ollama ollama pull llama2:7b
+sudo -u ollama ollama pull mistral:7b
+
+# Test the proxy with your admin token
+curl -H "Authorization: Bearer YOUR_ADMIN_TOKEN" \
+     -H "Content-Type: application/json" \
+     -d '{"model": "llama2:7b", "prompt": "Hello from the proxy!"}' \
+     http://localhost:11434/api/generate
+```
+
+### 7. Firewall setup (optional)
+
+```bash
+# If using UFW firewall
+sudo ufw allow 11434/tcp comment "Ollama Proxy"
+
+# Block direct access to backend servers (optional)
+# sudo ufw deny 11435/tcp
+# sudo ufw deny 11436/tcp
+```
+
+### 8. Setup logrotate (optional)
+
+```bash
+sudo tee /etc/logrotate.d/ollama-proxy > /dev/null << 'EOF'
+/var/log/ollama-proxy/*.log {
+    daily
+    missingok
+    rotate 30
+    compress
+    delaycompress
+    notifempty
+    create 644 ollama ollama
+    postrotate
+        systemctl reload ollama-proxy
+    endscript
+}
+EOF
+```
+
+### Service Management Commands
+
+```bash
+# Check all services
+sudo systemctl status ollama-high-performance ollama-legacy ollama-proxy
+
+# Restart proxy after configuration changes
+sudo systemctl restart ollama-proxy
+
+# View logs
+sudo journalctl -u ollama-proxy -f
+tail -f /var/log/ollama-proxy/application.log
+
+# Create additional users
+sudo -u ollama RAILS_ENV=production bundle exec rails users:create[username] -C /opt/ollama-proxy
+
+# Monitor server health
+watch -n 5 'curl -s http://localhost:11434/health | jq'
+```
+
+### GPU Configuration Notes
+
+- **CUDA_VISIBLE_DEVICES**: Adjust GPU assignments based on your hardware
+- **High-performance server**: Uses GPUs 0,1 (typically newer/faster GPUs)  
+- **Legacy server**: Uses GPUs 2,3 (typically older/slower GPUs)
+- **Memory limits**: Configure `max_memory_gb` based on GPU VRAM
+- **Model placement**: Large models automatically route to high-performance server
+
+This setup provides a production-ready Ollama proxy with automatic startup, logging, and intelligent model routing across multiple GPU configurations.
 
 ## Testing
 
