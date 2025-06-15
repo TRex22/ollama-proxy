@@ -1,11 +1,19 @@
 Rails.application.routes.draw do
   devise_for :users
-  # Define your application routes per the DSL in https://guides.rubyonrails.org/routing.html
-
-  # Reveal health status on /up that returns 200 if the app boots with no exceptions, otherwise 500.
-  # Can be used by load balancers and uptime monitors to verify that the app is live.
+  
+  # Health check endpoints (no authentication required)
+  get '/health', to: 'health#check'
   get "up" => "rails/health#show", as: :rails_health_check
 
-  # Defines the root path route ("/")
-  # root "posts#index"
+  # Ollama API proxy - catch all routes and forward them
+  # This must be last to avoid conflicts with other routes
+  match '*path', to: 'proxy#forward', via: :all, constraints: lambda { |req|
+    # Skip health check and devise routes
+    !req.path.start_with?('/health') && 
+    !req.path.start_with?('/up') && 
+    !req.path.start_with?('/users')
+  }
+
+  # Root also goes to proxy for Ollama compatibility
+  root to: 'proxy#forward'
 end
