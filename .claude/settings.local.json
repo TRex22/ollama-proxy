@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(bundle install:*)",
+      "Bash(rails generate:*)",
+      "Bash(source:*)",
+      "Bash(rvm use:*)",
+      "Bash(ruby --version)",
+      "Bash(rails:*)"
+    ],
+    "deny": []
+  }
+}
