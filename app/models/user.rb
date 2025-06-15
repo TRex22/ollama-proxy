@@ -19,7 +19,7 @@ class User < ApplicationRecord
     return nil if token.blank?
 
     # Find users with token digests and verify with BCrypt
-    active.where.not(token_digest: nil).find { |user| 
+    active.where.not(token_digest: nil).find { |user|
       BCrypt::Password.new(user.token_digest) == token
     }
   end

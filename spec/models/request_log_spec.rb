@@ -68,7 +68,7 @@ RSpec.describe RequestLog, type: :model do
           response_status: 200,
           error_message: 'Connection timeout'
         )
-        
+
         error_logs = RequestLog.errors
         expect(error_logs).to include(log_with_error_message)
       end

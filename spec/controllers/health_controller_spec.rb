@@ -14,7 +14,7 @@ RSpec.describe HealthController, type: :controller do
             max_memory_gb: nil
           },
           legacy: {
-            host: 'localhost', 
+            host: 'localhost',
             port: 11436,
             enabled: true,
             priority: 2,
@@ -54,7 +54,7 @@ RSpec.describe HealthController, type: :controller do
       get :check
 
       json_response = JSON.parse(response.body)
-      
+
       expect(json_response).to have_key('status')
       expect(json_response).to have_key('timestamp')
       expect(json_response).to have_key('servers')
@@ -72,7 +72,7 @@ RSpec.describe HealthController, type: :controller do
       expect(response).to have_http_status(:success)
       json_response = JSON.parse(response.body)
       expect(json_response['status']).to eq('ok')
-      
+
       # Should still return server info even if checks fail
       expect(json_response).to have_key('servers')
     end
@@ -87,7 +87,7 @@ RSpec.describe HealthController, type: :controller do
 
       json_response = JSON.parse(response.body)
       server_status = json_response['servers']['high_performance']
-      
+
       expect(server_status).to have_key('response_time_ms')
       expect(server_status).to have_key('status')
       expect(server_status['status']).to eq('healthy')
@@ -101,7 +101,7 @@ RSpec.describe HealthController, type: :controller do
 
       json_response = JSON.parse(response.body)
       server_status = json_response['servers']['high_performance']
-      
+
       expect(server_status['status']).to eq('unhealthy')
     end
 
@@ -113,7 +113,7 @@ RSpec.describe HealthController, type: :controller do
       json_response = JSON.parse(response.body)
       hp_server = json_response['servers']['high_performance']
       legacy_server = json_response['servers']['legacy']
-      
+
       expect(hp_server).to have_key('priority')
       expect(hp_server).to have_key('max_memory_gb')
       expect(legacy_server['priority']).to eq(2)

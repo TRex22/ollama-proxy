@@ -89,7 +89,7 @@ RSpec.describe User, type: :model do
         response_status: 200,
         response_time_ms: 150.5
       )
-      
+
       expect { user.destroy! }.to change { RequestLog.count }.by(-1)
     end
   end

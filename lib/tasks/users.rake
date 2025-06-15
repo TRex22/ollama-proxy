@@ -1,6 +1,6 @@
 namespace :users do
   desc "Create a new user with API token"
-  task :create, [:name] => :environment do |t, args|
+  task :create, [ :name ] => :environment do |t, args|
     if args[:name].blank?
       puts "Usage: rails users:create[username]"
       puts "Example: rails users:create[john_doe]"
@@ -63,21 +63,21 @@ namespace :users do
       request_count = user.request_logs.count
       token_preview = "#{user.api_token[0..7]}..."
       created_date = user.created_at.strftime("%Y-%m-%d")
-      
-      printf "%-20s %-10s %-10s %-32s %s\n", 
-             user.name, 
-             status, 
+
+      printf "%-20s %-10s %-10s %-32s %s\n",
+             user.name,
+             status,
              request_count,
-             token_preview, 
+             token_preview,
              created_date
     end
-    
+
     puts ""
     puts "Total users: #{users.count} (#{users.where(active: true).count} active)"
   end
 
   desc "Show detailed user information"
-  task :show, [:name] => :environment do |t, args|
+  task :show, [ :name ] => :environment do |t, args|
     if args[:name].blank?
       puts "Usage: rails users:show[username]"
       exit 1
@@ -103,21 +103,21 @@ namespace :users do
     puts "Created: #{user.created_at}"
     puts "Updated: #{user.updated_at}"
     puts ""
-    
+
     # Recent activity
     recent_logs = user.request_logs.recent.limit(10)
     puts "📊 Recent Activity (last 10 requests):"
     puts "-" * 50
-    
+
     if recent_logs.empty?
       puts "No requests logged yet."
     else
       recent_logs.each do |log|
-        status_icon = log.response_status.to_s.start_with?('2') ? '✅' : '❌'
+        status_icon = log.response_status.to_s.start_with?("2") ? "✅" : "❌"
         puts "#{status_icon} #{log.http_method} #{log.path} → #{log.server_used} (#{log.response_status}) #{log.created_at.strftime('%m/%d %H:%M')}"
       end
     end
-    
+
     puts ""
     puts "📈 Statistics:"
     puts "Total requests: #{user.request_logs.count}"
@@ -126,7 +126,7 @@ namespace :users do
   end
 
   desc "Activate a user"
-  task :activate, [:name] => :environment do |t, args|
+  task :activate, [ :name ] => :environment do |t, args|
     if args[:name].blank?
       puts "Usage: rails users:activate[username]"
       exit 1
@@ -147,7 +147,7 @@ namespace :users do
   end
 
   desc "Deactivate a user"
-  task :deactivate, [:name] => :environment do |t, args|
+  task :deactivate, [ :name ] => :environment do |t, args|
     if args[:name].blank?
       puts "Usage: rails users:deactivate[username]"
       exit 1
@@ -169,7 +169,7 @@ namespace :users do
   end
 
   desc "Regenerate API token for a user"
-  task :regenerate_token, [:name] => :environment do |t, args|
+  task :regenerate_token, [ :name ] => :environment do |t, args|
     if args[:name].blank?
       puts "Usage: rails users:regenerate_token[username]"
       exit 1
@@ -194,7 +194,7 @@ namespace :users do
   end
 
   desc "Delete a user (with confirmation)"
-  task :delete, [:name] => :environment do |t, args|
+  task :delete, [ :name ] => :environment do |t, args|
     if args[:name].blank?
       puts "Usage: rails users:delete[username]"
       exit 1
@@ -210,9 +210,9 @@ namespace :users do
     puts "This will also delete #{user.request_logs.count} request logs."
     puts ""
     print "Type 'DELETE' to confirm: "
-    
+
     confirmation = STDIN.gets.chomp
-    unless confirmation == 'DELETE'
+    unless confirmation == "DELETE"
       puts "❌ Deletion cancelled."
       exit 0
     end
@@ -222,23 +222,23 @@ namespace :users do
   end
 
   desc "Clean up old request logs"
-  task :cleanup_logs, [:days] => :environment do |t, args|
+  task :cleanup_logs, [ :days ] => :environment do |t, args|
     days = (args[:days] || 30).to_i
     cutoff_date = days.days.ago
-    
-    old_logs = RequestLog.where('created_at < ?', cutoff_date)
+
+    old_logs = RequestLog.where("created_at < ?", cutoff_date)
     count = old_logs.count
-    
+
     if count == 0
       puts "No logs older than #{days} days found."
       return
     end
-    
+
     puts "Found #{count} request logs older than #{days} days (before #{cutoff_date.strftime('%Y-%m-%d')})"
     print "Delete them? (y/N): "
-    
+
     confirmation = STDIN.gets.chomp.downcase
-    if confirmation == 'y' || confirmation == 'yes'
+    if confirmation == "y" || confirmation == "yes"
       old_logs.delete_all
       puts "✅ Deleted #{count} old request logs."
     else

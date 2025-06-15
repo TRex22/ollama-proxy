@@ -25,7 +25,7 @@ RSpec.describe ApplicationController, type: :controller do
       it 'allows access' do
         request.headers['Authorization'] = "Bearer #{user.api_token}"
         get :index
-        
+
         expect(response).to have_http_status(:success)
         expect(JSON.parse(response.body)['message']).to eq('success')
       end
@@ -33,7 +33,7 @@ RSpec.describe ApplicationController, type: :controller do
       it 'sets current_user' do
         request.headers['Authorization'] = "Bearer #{user.api_token}"
         get :index
-        
+
         expect(controller.send(:current_user)).to eq(user)
       end
     end
@@ -42,14 +42,14 @@ RSpec.describe ApplicationController, type: :controller do
       it 'returns unauthorized status' do
         request.headers['Authorization'] = "Bearer invalid_token"
         get :index
-        
+
         expect(response).to have_http_status(:unauthorized)
       end
 
       it 'returns WWW-Authenticate header' do
         request.headers['Authorization'] = "Bearer invalid_token"
         get :index
-        
+
         expect(response.headers['WWW-Authenticate']).to be_present
       end
     end
@@ -57,7 +57,7 @@ RSpec.describe ApplicationController, type: :controller do
     context 'without token' do
       it 'returns unauthorized status' do
         get :index
-        
+
         expect(response).to have_http_status(:unauthorized)
       end
     end
@@ -67,7 +67,7 @@ RSpec.describe ApplicationController, type: :controller do
         user.update!(active: false)
         request.headers['Authorization'] = "Bearer #{user.api_token}"
         get :index
-        
+
         expect(response).to have_http_status(:unauthorized)
       end
     end
@@ -76,14 +76,14 @@ RSpec.describe ApplicationController, type: :controller do
       it 'returns unauthorized for missing Bearer prefix' do
         request.headers['Authorization'] = user.api_token
         get :index
-        
+
         expect(response).to have_http_status(:unauthorized)
       end
 
       it 'returns unauthorized for empty token' do
         request.headers['Authorization'] = "Bearer "
         get :index
-        
+
         expect(response).to have_http_status(:unauthorized)
       end
     end
@@ -100,7 +100,7 @@ RSpec.describe ApplicationController, type: :controller do
 
     it 'creates a request log entry' do
       expect {
-        controller.send(:log_request, 
+        controller.send(:log_request,
           ollama_model: 'llama2',
           server_used: 'high_performance',
           response_status: 200,
@@ -132,7 +132,7 @@ RSpec.describe ApplicationController, type: :controller do
     it 'handles logging failures gracefully' do
       # Mock RequestLog.create! to raise an exception
       allow(RequestLog).to receive(:create!).and_raise(StandardError.new('Database error'))
-      
+
       # Should not raise an exception
       expect {
         controller.send(:log_request, ollama_model: 'test')
@@ -141,9 +141,9 @@ RSpec.describe ApplicationController, type: :controller do
 
     it 'logs errors when request logging fails' do
       allow(RequestLog).to receive(:create!).and_raise(StandardError.new('Database error'))
-      
+
       expect(Rails.logger).to receive(:error).with('Failed to log request: Database error')
-      
+
       controller.send(:log_request, ollama_model: 'test')
     end
   end

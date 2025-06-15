@@ -5,7 +5,7 @@ RSpec.describe ProxyController, type: :controller do
 
   before do
     request.headers['Authorization'] = "Bearer #{user.api_token}"
-    
+
     # Mock the ollama_proxy configuration
     allow(Rails.application.config).to receive(:ollama_proxy).and_return({
       servers: {
@@ -56,12 +56,12 @@ RSpec.describe ProxyController, type: :controller do
           headers: { 'content-type' => 'application/json' },
           success?: true
         )
-        
+
         allow(HTTParty).to receive(:get).and_return(mock_response)
         allow(HTTParty).to receive(:post).and_return(mock_response)
-        
+
         post :forward, params: { path: 'api/generate' }
-        
+
         expect(response).to have_http_status(:success)
       end
 
@@ -72,10 +72,10 @@ RSpec.describe ProxyController, type: :controller do
           headers: { 'content-type' => 'application/json' },
           success?: true
         )
-        
+
         allow(HTTParty).to receive(:get).and_return(mock_response)
         allow(HTTParty).to receive(:post).and_return(mock_response)
-        
+
         expect {
           post :forward, params: { path: 'api/generate' }
         }.to change { RequestLog.count }.by(1)
@@ -83,9 +83,9 @@ RSpec.describe ProxyController, type: :controller do
 
       it 'handles server errors gracefully' do
         allow(HTTParty).to receive(:get).and_raise(StandardError.new('Connection failed'))
-        
+
         post :forward, params: { path: 'api/generate' }
-        
+
         expect(response).to have_http_status(:internal_server_error)
         json_response = JSON.parse(response.body)
         expect(json_response['error']).to eq('Internal server error')
@@ -108,7 +108,7 @@ RSpec.describe ProxyController, type: :controller do
     it 'extracts model from generate request body' do
       allow(request).to receive(:path).and_return('/api/generate')
       allow(request).to receive(:raw_post).and_return('{"model": "llama2", "prompt": "test"}')
-      
+
       model_name = controller.send(:extract_model_name)
       expect(model_name).to eq('llama2')
     end
@@ -116,7 +116,7 @@ RSpec.describe ProxyController, type: :controller do
     it 'extracts model from chat request body' do
       allow(request).to receive(:path).and_return('/api/chat')
       allow(request).to receive(:raw_post).and_return('{"model": "mistral:7b", "messages": []}')
-      
+
       model_name = controller.send(:extract_model_name)
       expect(model_name).to eq('mistral:7b')
     end
@@ -124,14 +124,14 @@ RSpec.describe ProxyController, type: :controller do
     it 'handles invalid JSON gracefully' do
       allow(request).to receive(:path).and_return('/api/generate')
       allow(request).to receive(:raw_post).and_return('invalid json')
-      
+
       model_name = controller.send(:extract_model_name)
       expect(model_name).to be_nil
     end
 
     it 'returns nil for paths without model info' do
       allow(request).to receive(:path).and_return('/api/tags')
-      
+
       model_name = controller.send(:extract_model_name)
       expect(model_name).to be_nil
     end
@@ -174,7 +174,7 @@ RSpec.describe ProxyController, type: :controller do
     it 'respects memory constraints' do
       # Mock a large model that exceeds legacy server capacity
       allow(controller).to receive(:get_model_memory_requirements).and_return(15.0)
-      
+
       server = controller.send(:select_server, 'large-model-70b')
       expect(server[:name]).to eq('high_performance')
     end
@@ -186,7 +186,7 @@ RSpec.describe ProxyController, type: :controller do
       allow(controller).to receive(:server_available?).with(
         hash_including(name: 'legacy')
       ).and_return(true)
-      
+
       server = controller.send(:select_server, 'llama2')
       expect(server[:name]).to eq('legacy')
     end
@@ -197,7 +197,7 @@ RSpec.describe ProxyController, type: :controller do
       server_config = { host: 'localhost', port: 11435, protocol: 'http' }
       allow(request).to receive(:path).and_return('/api/generate')
       allow(request).to receive(:query_string).and_return('')
-      
+
       url = controller.send(:build_request_url, server_config)
       expect(url).to eq('http://localhost:11435/api/generate')
     end
@@ -206,7 +206,7 @@ RSpec.describe ProxyController, type: :controller do
       server_config = { host: 'localhost', port: 11435 }
       allow(request).to receive(:path).and_return('/api/tags')
       allow(request).to receive(:query_string).and_return('format=json')
-      
+
       url = controller.send(:build_request_url, server_config)
       expect(url).to eq('http://localhost:11435/api/tags?format=json')
     end
@@ -215,7 +215,7 @@ RSpec.describe ProxyController, type: :controller do
       server_config = { host: 'localhost', port: 11435 }
       allow(request).to receive(:path).and_return('/api/tags')
       allow(request).to receive(:query_string).and_return('')
-      
+
       url = controller.send(:build_request_url, server_config)
       expect(url).to start_with('http://')
     end

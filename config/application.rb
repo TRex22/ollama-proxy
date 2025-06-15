@@ -38,10 +38,10 @@ module OllamaProxy
       if log_config[:enabled]
         log_dir = log_config[:directory]
         FileUtils.mkdir_p(log_dir) unless Dir.exist?(log_dir)
-        
+
         config.logger = Logger.new(
-          File.join(log_dir, 'application.log'),
-          'daily',
+          File.join(log_dir, "application.log"),
+          "daily",
           log_config[:max_files] || 10
         )
         config.logger.level = Logger.const_get(log_config[:level].upcase)
@@ -49,6 +49,6 @@ module OllamaProxy
     end
 
     # Set time zone
-    config.time_zone = 'UTC'
+    config.time_zone = "UTC"
   end
 end

@@ -30,17 +30,17 @@ class ProxyController < ApplicationController
       error_message: e.message
     )
 
-    render json: { error: 'Internal server error' }, status: 500
+    render json: { error: "Internal server error" }, status: 500
   end
 
   private
 
   def extract_model_name
     # Try to extract model name from various Ollama API endpoints
-    if request.path.include?('/api/generate') || request.path.include?('/api/chat')
+    if request.path.include?("/api/generate") || request.path.include?("/api/chat")
       begin
         body = JSON.parse(request.raw_post) if request.raw_post.present?
-        return body['model'] if body&.key?('model')
+        return body["model"] if body&.key?("model")
       rescue JSON::ParserError
         # Ignore JSON parse errors
       end
@@ -54,17 +54,17 @@ class ProxyController < ApplicationController
 
   def select_server(model_name)
     config = Rails.application.config.ollama_proxy
-    
+
     # Check for explicit assignments first
     if model_name && config[:model_config][:explicit_assignments]&.key?(model_name)
       server_name = config[:model_config][:explicit_assignments][model_name]
-      
+
       # Check if it's an external host
       if config[:external_hosts]&.key?(server_name.to_sym)
         external_config = config[:external_hosts][server_name.to_sym]
         return external_config.merge(name: server_name) if external_config[:enabled]
       end
-      
+
       # Check if it's a regular server
       if config[:servers]&.key?(server_name.to_sym)
         server_config = config[:servers][server_name.to_sym]
@@ -74,7 +74,7 @@ class ProxyController < ApplicationController
 
     # Get model memory requirements
     model_memory_gb = get_model_memory_requirements(model_name)
-    
+
     # Filter servers by memory constraints and availability
     available_servers = config[:servers].select do |name, server_config|
       server_config[:enabled] &&
@@ -91,7 +91,7 @@ class ProxyController < ApplicationController
 
     # Sort by priority (lower number = higher priority) and select the best one
     selected_server = available_servers.min_by { |name, server_config| server_config[:priority] || 999 }
-    
+
     Rails.logger.info "Selected #{selected_server[0]} server for model #{model_name || 'unknown'}"
     selected_server[1]
   end
@@ -100,7 +100,7 @@ class ProxyController < ApplicationController
     return Rails.application.config.ollama_proxy[:model_config][:default_memory_gb] unless model_name
 
     config = Rails.application.config.ollama_proxy[:model_config]
-    
+
     # Check memory overrides first
     if config[:memory_overrides]&.key?(model_name)
       return config[:memory_overrides][model_name]
@@ -126,7 +126,7 @@ class ProxyController < ApplicationController
   def fetch_model_memory_from_servers(model_name)
     config = Rails.application.config.ollama_proxy
     cache_key = "model_memory_#{model_name}"
-    
+
     # Check cache first if enabled
     if config[:model_config][:cache_model_info]
       cached_memory = Rails.cache.read(cache_key)
@@ -136,26 +136,26 @@ class ProxyController < ApplicationController
     # Try to fetch from each enabled server
     config[:servers].each do |server_name, server_config|
       next unless server_config[:enabled]
-      
+
       begin
         response = HTTParty.get(
           "http://#{server_config[:host]}:#{server_config[:port]}/api/tags",
           timeout: config[:model_info_timeout] || 10
         )
-        
+
         if response.success?
-          models = JSON.parse(response.body)['models'] || []
-          model_info = models.find { |m| m['name'] == model_name }
-          
-          if model_info && model_info['size']
+          models = JSON.parse(response.body)["models"] || []
+          model_info = models.find { |m| m["name"] == model_name }
+
+          if model_info && model_info["size"]
             # Convert bytes to GB
-            memory_gb = (model_info['size'].to_f / (1024**3)).round(1)
-            
+            memory_gb = (model_info["size"].to_f / (1024**3)).round(1)
+
             # Cache the result if caching is enabled
             if config[:model_config][:cache_model_info]
               Rails.cache.write(cache_key, memory_gb, expires_in: config[:model_config][:cache_ttl_seconds] || 3600)
             end
-            
+
             return memory_gb
           end
         end
@@ -169,16 +169,16 @@ class ProxyController < ApplicationController
 
   def server_available?(server_config)
     return false unless server_config[:enabled]
-    
+
     config = Rails.application.config.ollama_proxy
     start_time = Time.current
-    
+
     begin
       response = HTTParty.get(
         "http://#{server_config[:host]}:#{server_config[:port]}/",
         timeout: 2
       )
-      
+
       response_time = Time.current - start_time
       response.success? && response_time < (config[:server_busy_threshold_ms] || 1000) / 1000.0
     rescue
@@ -188,22 +188,22 @@ class ProxyController < ApplicationController
 
   def forward_request(server_config)
     url = build_request_url(server_config)
-    
+
     options = {
       timeout: Rails.application.config.ollama_proxy[:request_timeout] || 300,
       headers: forward_headers(server_config)
     }
 
     case request.method.upcase
-    when 'GET'
+    when "GET"
       HTTParty.get(url, options)
-    when 'POST'
+    when "POST"
       HTTParty.post(url, options.merge(body: request.raw_post))
-    when 'PUT'
+    when "PUT"
       HTTParty.put(url, options.merge(body: request.raw_post))
-    when 'DELETE'
+    when "DELETE"
       HTTParty.delete(url, options)
-    when 'PATCH'
+    when "PATCH"
       HTTParty.patch(url, options.merge(body: request.raw_post))
     else
       HTTParty.send(request.method.downcase, url, options.merge(body: request.raw_post))
@@ -211,10 +211,10 @@ class ProxyController < ApplicationController
   end
 
   def build_request_url(server_config)
-    protocol = server_config[:protocol] || 'http'
+    protocol = server_config[:protocol] || "http"
     host = server_config[:host]
     port = server_config[:port]
-    
+
     url = "#{protocol}://#{host}:#{port}#{request.path}"
     url += "?#{request.query_string}" if request.query_string.present?
     url
@@ -223,20 +223,20 @@ class ProxyController < ApplicationController
   def forward_headers(server_config)
     # Forward relevant headers, excluding hop-by-hop headers
     headers_to_forward = request.headers.to_h.select do |key, value|
-      key.start_with?('HTTP_') &&
-      !['HTTP_AUTHORIZATION', 'HTTP_HOST', 'HTTP_VERSION'].include?(key)
+      key.start_with?("HTTP_") &&
+      ![ "HTTP_AUTHORIZATION", "HTTP_HOST", "HTTP_VERSION" ].include?(key)
     end
 
     # Convert back to standard header format
-    forwarded_headers = headers_to_forward.transform_keys do |key| 
-      key.sub(/^HTTP_/, '').split('_').map(&:capitalize).join('-') 
+    forwarded_headers = headers_to_forward.transform_keys do |key|
+      key.sub(/^HTTP_/, "").split("_").map(&:capitalize).join("-")
     end
 
     # Add API key for external services
     if server_config[:api_key_env]
       api_key = ENV[server_config[:api_key_env]]
       if api_key.present?
-        forwarded_headers['Authorization'] = "Bearer #{api_key}"
+        forwarded_headers["Authorization"] = "Bearer #{api_key}"
       else
         Rails.logger.warn "API key environment variable #{server_config[:api_key_env]} not set"
       end
@@ -247,12 +247,12 @@ class ProxyController < ApplicationController
 
   def render_proxy_response(response)
     # Forward the response status and body
-    response_headers = response.headers.to_h.except('transfer-encoding', 'connection')
+    response_headers = response.headers.to_h.except("transfer-encoding", "connection")
 
     response_headers.each do |key, value|
-      response.set_header(key, value) unless ['transfer-encoding', 'connection'].include?(key.downcase)
+      response.set_header(key, value) unless [ "transfer-encoding", "connection" ].include?(key.downcase)
     end
 
-    render body: response.body, status: response.code, content_type: response.headers['content-type']
+    render body: response.body, status: response.code, content_type: response.headers["content-type"]
   end
 end
