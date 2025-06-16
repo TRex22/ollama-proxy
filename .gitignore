@@ -57,6 +57,13 @@ config/master.key
 # dotenv
 # TODO Comment out this rule if environment variables can be committed
 .env
+.env.local
+.env.*.local
+
+# Local deployment configurations
+config/ollama_proxy.local.yml
+config/deploy.local.yml
+.kamal/secrets.local
 
 ## Environment normalization:
 /.bundle

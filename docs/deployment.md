@@ -136,6 +136,157 @@ If Ollama setup fails, you can:
 - The deployment creates backups before modifying Ollama configs
 - Firewall rules are automatically updated for Ollama ports (11435, 11436)
 
+## Local Development Setup (Mac)
+
+For local development with multiple Ollama servers, create your own configuration files that won't be committed to the repository.
+
+### 1. Setup Environment Variables
+
+Copy the example environment file:
+```bash
+cp .env.local.example .env.local
+```
+
+Edit `.env.local` with your actual server details:
+```bash
+# High-performance server (remote GPU server)
+OLLAMA_HIGH_PERF_HOST=192.168.1.100
+OLLAMA_HIGH_PERF_PORT=11434
+
+# Low-performance server (remote CPU server)
+OLLAMA_LOW_PERF_HOST=192.168.1.101  
+OLLAMA_LOW_PERF_PORT=11434
+
+# Generate secret: bin/rails secret
+SECRET_KEY_BASE=your_generated_secret_key_base_here
+```
+
+### 2. Configure Local Ollama (Homebrew)
+
+Configure your local Ollama to run on port 11435:
+```bash
+# Stop existing Ollama service
+brew services stop ollama
+
+# Create custom Ollama service for port 11435
+mkdir -p ~/Library/LaunchAgents
+
+cat > ~/Library/LaunchAgents/homebrew.mxcl.ollama-custom.plist << 'EOF'
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>homebrew.mxcl.ollama-custom</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>/opt/homebrew/bin/ollama</string>
+        <string>serve</string>
+    </array>
+    <key>RunAtLoad</key>
+    <true/>
+    <key>KeepAlive</key>
+    <true/>
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>OLLAMA_HOST</key>
+        <string>127.0.0.1:11435</string>
+    </dict>
+</dict>
+</plist>
+EOF
+
+# Start custom Ollama service
+launchctl load ~/Library/LaunchAgents/homebrew.mxcl.ollama-custom.plist
+launchctl start homebrew.mxcl.ollama-custom
+```
+
+### 3. Create Local Configuration
+
+Create your local Ollama proxy configuration:
+```bash
+cat > config/ollama_proxy.local.yml << 'EOF'
+development:
+  proxy_port: 11434
+  
+  servers:
+    high_performance:
+      host: "<%= ENV['OLLAMA_HIGH_PERF_HOST'] %>"
+      port: <%= ENV['OLLAMA_HIGH_PERF_PORT'] %>
+      name: "high_performance"
+      priority: 1
+      max_memory_gb: null  # Unlimited
+      enabled: true
+    medium_performance:
+      host: "localhost"
+      port: 11435
+      name: "medium_performance" 
+      priority: 2
+      max_memory_gb: 10  # Up to 10GB models
+      enabled: true
+    low_performance:
+      host: "<%= ENV['OLLAMA_LOW_PERF_HOST'] %>"
+      port: <%= ENV['OLLAMA_LOW_PERF_PORT'] %>
+      name: "low_performance"
+      priority: 3
+      max_memory_gb: 6  # Up to 6GB models
+      enabled: true
+  
+  logging:
+    enabled: true
+    level: "debug"
+    directory: "./log"
+    max_size: "10MB"
+    max_files: 3
+EOF
+```
+
+### 4. Run Locally
+
+Start the application using your local configuration:
+```bash
+# Load environment variables
+source .env.local
+
+# Start the Rails server with custom config
+OLLAMA_PROXY_CONFIG=config/ollama_proxy.local.yml rails server
+```
+
+### 5. Local Kamal Deployment (Optional)
+
+For local containerized deployment:
+```bash
+# Create local Kamal secrets
+cat > .kamal/secrets.local << 'EOF'
+RAILS_MASTER_KEY=$(cat config/master.key)
+SECRET_KEY_BASE=$SECRET_KEY_BASE
+OLLAMA_HIGH_PERF_HOST=$OLLAMA_HIGH_PERF_HOST
+OLLAMA_HIGH_PERF_PORT=$OLLAMA_HIGH_PERF_PORT
+OLLAMA_LOW_PERF_HOST=$OLLAMA_LOW_PERF_HOST
+OLLAMA_LOW_PERF_PORT=$OLLAMA_LOW_PERF_PORT
+EOF
+
+# Deploy locally with Kamal
+KAMAL_SECRETS=.kamal/secrets.local kamal deploy -c config/deploy.local.yml
+```
+
+### Verification
+
+Test your setup:
+```bash
+# Check high-performance server
+curl http://$OLLAMA_HIGH_PERF_HOST:$OLLAMA_HIGH_PERF_PORT/
+
+# Check local medium-performance server  
+curl http://localhost:11435/
+
+# Check low-performance server
+curl http://$OLLAMA_LOW_PERF_HOST:$OLLAMA_LOW_PERF_PORT/
+
+# Test the proxy
+curl http://localhost:3000/health
+```
+
 ## File Locations on Target Server
 
 - Ollama configs: `/etc/systemd/system/ollama-*.service`
