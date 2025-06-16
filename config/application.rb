@@ -36,7 +36,7 @@ module OllamaProxy
     if Rails.env.production?
       log_config = config.ollama_proxy[:logging]
       if log_config[:enabled]
-        log_dir = log_config[:directory]
+        log_dir = ENV['OLLAMA_PROXY_LOG_DIR'] || log_config[:directory]
         FileUtils.mkdir_p(log_dir) unless Dir.exist?(log_dir)
 
         config.logger = Logger.new(

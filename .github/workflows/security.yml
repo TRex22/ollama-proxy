@@ -190,7 +190,11 @@ jobs:
         env:
           RAILS_ENV: production
           SECRET_KEY_BASE: dummy_secret_for_testing
+          OLLAMA_PROXY_LOG_DIR: ./tmp/logs
         run: |
+          # Create log directory for testing
+          mkdir -p ./tmp/logs
+          
           # Test application boot time
           echo "Testing application boot time..."
           time timeout 30s bin/rails runner "puts 'Boot time test completed'"
