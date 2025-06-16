@@ -1512,3 +1512,31 @@ Install and configure:
 
  Use devise for user management
 ```
+
+# Workflow issue
+Please fix the boot time test in the security workflow on github actions. It works locally but fails on the action. Here is the
+  output:
+  ```
+  Run # Test application boot time
+    # Test application boot time
+    echo "Testing application boot time..."
+    time timeout 30s bin/rails runner "puts 'Boot time test completed'"
+    shell: /usr/bin/bash -e {0}
+    env:
+      RAILS_ENV: production
+      SECRET_KEY_BASE: dummy_secret_for_testing
+  Testing application boot time...
+  /opt/hostedtoolcache/Ruby/3.4.4/x64/lib/ruby/3.4.0/fileutils.rb:403:in 'Dir.mkdir': Permission denied @ dir_s_mkdir -
+  /var/log/ollama-proxy (Errno::EACCES)
+      from /opt/hostedtoolcache/Ruby/3.4.4/x64/lib/ruby/3.4.0/fileutils.rb:403:in 'FileUtils.fu_mkdir'
+  ```
+
+# Kamal deployment
+Please help create a kamal deployment config. I would like to specify the deployment server in an environment variable or secret  │
+│   since this is a public codebase but my AI server is secure and private. Also the server is manajro based, already has docker      │
+│   installed and an Ollama server installed. I'd like to have the kamal script check and ask me to override existing ollama server   │
+│   config. It should create a backup of the edited files. Then if I allow it it should setup both ollama servers with the desired    │
+│   CUDA devices split between the servers it creates. Any functional changes need to be tested. Keep costs low by silencing command output where it makes sense to do so. Also other forms of token and context compression to reduce the cost of this request.
+I would like kamal to use a local docker image and push this via the deploy server. This is a special hardened AI server target
+
+

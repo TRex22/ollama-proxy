@@ -600,6 +600,10 @@ The following components still need to be implemented:
 - RSpec test suite
 - RuboCop configuration
 
+## Documentation
+
+- [Deployment Guide](docs/deployment.md) - Complete guide for deploying with Kamal
+
 ## Contributing
 
 1. Fork the repository
