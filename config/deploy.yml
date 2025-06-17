@@ -35,18 +35,18 @@ volumes:
   - "/var/log/ollama-proxy:/app/log"
   - "ollama_proxy_storage:/rails/storage"
 
-healthcheck:
-  path: /health
-  port: 3000
-  max_attempts: 7
-  interval: 20s
-  timeout: 10s
+# healthcheck:
+#   path: /health
+#   port: 3000
+#   max_attempts: 7
+#   interval: 20s
+#   timeout: 10s
 
-# Pre-deployment hooks to setup Ollama servers
-hooks:
-  pre-deploy:
-    - path: ./scripts/setup-ollama.sh
-      host: all
+# # Pre-deployment hooks to setup Ollama servers
+# hooks:
+#   pre-deploy:
+#     - path: ./scripts/setup-ollama.sh
+#       host: all
 
 # Use a different ssh user than root
 # ssh:

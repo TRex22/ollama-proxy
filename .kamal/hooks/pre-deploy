@@ -1,0 +1,27 @@
+#!/bin/bash
+# .kamal/hooks/pre-deploy
+set -e
+
+echo "🚀 Running Ollama setup on remote servers..."
+
+# Split KAMAL_HOSTS by comma and execute on each
+IFS=',' read -ra HOSTS <<< "$KAMAL_HOSTS"
+for host in "${HOSTS[@]}"; do
+    echo "🦙 Setting up Ollama on $host..."
+
+    # Copy script to remote server
+    scp -q .kamal/scripts/setup-ollama.sh "$host:/tmp/" 2>/dev/null
+
+    # Execute script remotely with error handling
+    if ssh -o ConnectTimeout=30 -o ServerAliveInterval=5 "$host" "sudo chmod +x /tmp/setup-ollama.sh && sudo /tmp/setup-ollama.sh" 2>/dev/null; then
+        # Clean up on success
+        ssh -o ConnectTimeout=10 "$host" "rm -f /tmp/setup-ollama.sh" 2>/dev/null || true
+    else
+        echo "⚠️ Ollama setup may have completed but SSH reconnection failed"
+        # Try to clean up with a new connection
+        sleep 2
+        ssh -o ConnectTimeout=10 "$host" "rm -f /tmp/setup-ollama.sh" 2>/dev/null || true
+    fi
+
+    echo "✅ Ollama setup complete on $host"
+done
