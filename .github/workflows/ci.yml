@@ -46,7 +46,7 @@ jobs:
         run: bin/brakeman --no-pager --format json --output tmp/brakeman.json
 
       - name: Upload Brakeman results
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         if: always()
         with:
           name: brakeman-results
@@ -95,7 +95,7 @@ jobs:
           bundle exec rspec --format progress --format RspecJunitFormatter --out tmp/rspec_results.xml
 
       - name: Upload test results
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         if: always()
         with:
           name: rspec-results-ruby-${{ matrix.ruby-version }}

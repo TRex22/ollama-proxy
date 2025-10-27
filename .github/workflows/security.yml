@@ -40,7 +40,7 @@ jobs:
         continue-on-error: true
 
       - name: Upload Brakeman report
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         if: always()
         with:
           name: brakeman-security-report
@@ -144,7 +144,7 @@ jobs:
           license_finder report --format json > license-report.json
 
       - name: Upload license report
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: license-compliance-report
           path: license-report.json
